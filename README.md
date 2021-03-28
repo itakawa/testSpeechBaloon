@@ -7,6 +7,7 @@ https://app.slack.com/client/T03MVATHL/C01Q294DCU9
 
 # how to setup
 Step-1, Get the OpenSiv3D v6 development repository from the following URL.
+
 https://github.com/Siv3D/OpenSiv3D/tree/v6_master
 * Third-party dependent libraries such as boost1.73 need to be set up in the Dependency folder.
 
