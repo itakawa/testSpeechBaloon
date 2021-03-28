@@ -119,7 +119,7 @@
     <ClCompile Include="..\Test\Siv3DTest_TextReader.cpp" />
     <ClCompile Include="..\Test\Siv3DTest_TextWriter.cpp" />
     <ClCompile Include="..\Test\Siv3DTest_Timer.cpp" />
-    <ClCompile Include="Main_D.cpp" />
+    <ClCompile Include="Main_E.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\icon.ico" />
