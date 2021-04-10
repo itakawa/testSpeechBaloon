@@ -119,7 +119,7 @@
     <ClCompile Include="..\Test\Siv3DTest_TextReader.cpp" />
     <ClCompile Include="..\Test\Siv3DTest_TextWriter.cpp" />
     <ClCompile Include="..\Test\Siv3DTest_Timer.cpp" />
-    <ClCompile Include="Main_E.cpp" />
+    <ClCompile Include="Main_F.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\icon.ico" />
@@ -129,6 +129,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Test\Siv3DTest.hpp" />
+    <ClInclude Include="Timeline2.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
