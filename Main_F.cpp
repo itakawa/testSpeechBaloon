@@ -282,7 +282,7 @@ void guiSyncMarker( PARAMID m_id, V origin, V value )
 
 void Main()
 {
-    Window::Resize(1600, 768);
+    Window::Resize(1366, 768);
     Window::SetStyle(WindowStyle::Sizable);         // ウィンドウを手動リサイズ可能にする
     Scene::SetBackground(ColorF(0.8, 0.9, 1.0));    // ウィンドウサイズに合わせて拡縮
 
@@ -329,8 +329,11 @@ void Main()
     Camera2D camera{ Scene::Center(), 1.0 };
 
     Timeline timeline = {};
-    timeline.setup(Rect{ 100,100,1300,300 });
-    timeline.setData( &origin.x, &origin.y );
+    timeline.setup(Rect{ 100,100,1280,300 });
+    
+    const Array<Timeline::PARAMLINE> params = {{ &origin.x,U"xpos",Color(U"#FF0000") },
+                                               { &origin.y,U"ypos",Color(U"#00FF00") }};
+    timeline.setData2( U"TestXY",0, 200, Color(U"#334433"), params, timeline.m_timeCursor, 10000 );
 
     while (System::Update())                        // メインループ
     {

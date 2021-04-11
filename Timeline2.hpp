@@ -1,7 +1,7 @@
 #pragma once
 # include <Siv3D.hpp>
 # include <Siv3d/Easing.hpp>
-
+#include <ThirdParty/Catch2/catch.hpp>
 
 class Timeline
 {
@@ -38,44 +38,55 @@ private:
 
 	struct Probe
 	{
-		float* x = nullptr;
-		float* y = nullptr;
+		float* value = nullptr;
 	};
-	Probe m_Probe;
+	Array<Probe> m_Probes;
+	enum PROBE {ID_X, ID_Y};
 
 	struct LinePoint
 	{
+/*
 		EaseType easeType;
 		double value;
 		uint32 timeStart;
 		uint32 timeLength;
 		double lineBegin;
 		double lineEnd;
+*/
+		EaseType easeType;
+		double value;
+		double duration;
 	};
 
 	struct Track
 	{
 		String textCaption = U"Unknown";
 		ColorF colorBG = ColorF{};
-		int32 intStartTime = 0;
-		int32 intLengthTime = 0;
-		int32 intHeight = 0;
+		uint32 intStartTime = 0;
+		uint32 intLengthTime = 0;
+		 int32 intHeight = 0;
+		uint32 intXDiv = 100;			//横軸の単位幅
 
-		double dblLo = -1.0;
-		double dblHi = 1.0;
-		double dblYDiv = 1.0;
-		int32 intXDiv = 100;
-
-		int32 intTrackNo = 0;
-		int32 baseY = 0;
+		uint32 intTrackNo = 0;
+		 int32 baseY = 0;				//トラック内スクロール高さ基準位置
 		Rect captionRect = Rect{};
 
 		bool merged = false;
 		int32 trackYPos = 0;
 
-		Array<String> lineNames;
+		Array<String> lineNames;		//もうタイムラインないの線は水平のみ
 		Array<Color> lineColors;
 		Array<Array<LinePoint>> linePoints;
+
+
+
+
+
+		double dblLo = -1.0;
+		double dblHi = 1.0;
+		double dblYDiv = 1.0;
+
+
 
 		~Track() = default;
 
@@ -136,7 +147,7 @@ private:
 	int32 m_fontHeight = 33;
 	int32 m_trackWidth = 400;
 
-	Array<Track> m_tracks;
+	Array<Track> m_Tracks;
 	int32 m_intGrid = 16;
 
 
@@ -148,12 +159,13 @@ private:
 
 	double m_timeFrom = 10;
 	double m_timeTo = 100;
-	double m_timeCursor = 0;
 	double m_timeMin = 0;
 	double m_timeMax = 3600*1000;
 	double m_unitTime = 10;
 
 public:
+	double m_timeCursor = 0;
+
 	~Timeline() = default;
 	Timeline() = default;
 
@@ -178,12 +190,12 @@ public:
 		m_iconS = Font(15, Typeface::Icon_MaterialDesign);
 		m_iconM = Font(25, Typeface::Icon_MaterialDesign);
 
-		m_fontS = Font(15, Typeface::Medium);
-		m_fontM = Font(25);
-		m_fontL = Font(50);
+		m_fontS = Font(10, Typeface::Medium);
+		m_fontM = Font(15);
+		m_fontL = Font(30);
 		
 		int32 &ft = m_frameThickness;
-		int32 fh = m_fontM.fontSize() + 4;
+		int32 fh = m_fontM.fontSize() + 15;
 		Rect& title = m_Gui[rcTITLE];
 		Rect& frame = m_Gui[rcFRAME];
 		Rect& toolbar = m_Gui[rcTOOLBAR];
@@ -194,73 +206,44 @@ public:
 		frame = Rect{ title.x, title.y + fh, title.w, m_Gadget.h - fh };
 		toolbar = Rect(frame.x + ft, frame.y + ft, trackWidth, toolbarHeight);
 		dragbar = Rect(toolbar.x + trackWidth, toolbar.y, frame.w - trackWidth, toolbar.h);
-
 	}
 
 	void addTrack(const Track& track)
 	{
-		m_tracks.emplace_back(track);
+		m_Tracks.emplace_back(track);
 	}
-
-	void setData(float* x, float* y)
+	struct PARAMLINE
 	{
-		//監視対象を登録
-		m_Probe.x = x;
-		m_Probe.y = y;
+		float* value;
+		String linemname;
+		Color  linecolor;
+	};
 
-		Track trackX, trackY ;
-		trackX.textCaption = U"Test X";
-		trackX.intTrackNo = 0;
-		trackX.intHeight = 100;
-		trackX.dblLo = 0;
-		trackX.dblHi = 1;
-		trackX.dblYDiv = 1;
-		trackX.intXDiv = 100;
-		trackX.intStartTime = 0;
-		trackX.intLengthTime = 1000;
-		trackX.colorBG = ColorF(0.5,0.3,0.5);
-
-		trackY = trackX;
-
-		trackX.lineNames << trackX.textCaption;
-		trackX.lineColors << Color(U"#FF0000");
-		trackX.linePoints.resize(1);
-
-		trackY.textCaption = U"Test Y";
-		trackY.intTrackNo = 1;
-		trackY.colorBG = ColorF(0.3,0.5,0.5);
-		trackY.lineNames << trackY.textCaption;
-		trackY.lineColors << Color(U"#FF0000");
-		trackY.linePoints.resize(1);
-
-		LinePoint ylp,xlp;
-		ylp.easeType = EASEINLINEAR;
-		ylp.timeStart = 0;
-		ylp.timeLength = 10;
-		ylp.lineBegin = 0;
-
-		xlp.easeType = EASEINLINEAR;
-		xlp.timeStart = 0;
-		xlp.timeLength = 10;
-		xlp.lineBegin = 0;
-		xlp.lineEnd = 10;
-
-		for (;ylp.timeStart< trackY.intLengthTime;)
+	void setData2(String caption,uint32 trackno,uint32 trackheight, Color colortrack, 
+				const Array<PARAMLINE> &paramline, double starttime = 0, uint32 lengthtime = 1000 )
+	{
+		Track tr ;
+		tr.linePoints.resize(paramline.size());
+		for(uint32 i=0;i<paramline.size(); i++)
 		{
-			ylp.lineEnd = Math::Sin(ToRadians(ylp.timeStart)) * trackY.dblHi;
-			trackY.linePoints[0] << ylp;
-			ylp.lineBegin = ylp.lineEnd;
-			ylp.timeStart += ylp.timeLength;
+			const PARAMLINE &pl = paramline[i];
+			m_Probes << Probe {pl.value} ;
 
-			xlp.lineEnd = (double)xlp.timeStart / 1000;
-			trackX.linePoints[0] << xlp;
-			xlp.lineBegin = xlp.lineEnd;
-			xlp.timeStart += xlp.timeLength;
+			tr.textCaption = caption;
+			tr.colorBG = colortrack;
+			tr.intStartTime = starttime;
+			tr.intLengthTime = lengthtime;	//とりあえず最初は1秒
+			tr.intTrackNo = trackno;	//トラック番号
+			tr.intHeight = trackheight;	//トラック表示高
 
+			tr.lineNames << pl.linemname;
+			tr.lineColors << pl.linecolor;
+
+			LinePoint lp = {EASEINLINEAR, *m_Probes[ID_X].value, 0};
+			tr.linePoints[i] << lp;
 		}
-		addTrack(trackX);
-		addTrack(trackY);
 
+		m_Tracks << tr ;
 	}
 
 	void action()
@@ -275,6 +258,7 @@ public:
 		updateDrag();
 		updateCursor();
 		updateSelection();
+		updateToolbar();
 
 		if (MouseL.up()) m_grabState.area = RELEASE;
 		return has_update;
@@ -286,7 +270,7 @@ public:
 //		rs.scissorEnable = true;
 //		Graphics2D::SetScissorRect(tr);
 //		ScopedRenderStates2D renderState(rs);
-
+/*
 		//ライン描画
 		for (int32 ii = 0; ii < tr.lineNames.size(); ii++)
 		{
@@ -394,6 +378,7 @@ public:
 				}
 			}
 		}
+		*/
 	}
 
 	void drawTrack()
@@ -403,10 +388,10 @@ public:
 
 		int32 tx = m_Gui[rcTRACKLIST].x + m_frameThickness;
 
-		for (int32 i = 0; i < m_tracks.size(); ++i)
+		for (int32 i = 0; i < m_Tracks.size(); ++i)
 		{
-			Track& tr = m_tracks[i];
-			int32& trackheight = m_tracks[tr.intTrackNo].intHeight;
+			Track& tr = m_Tracks[i];
+			int32& trackheight = m_Tracks[tr.intTrackNo].intHeight;
 			int32 ty = m_Gui[rcTRACKLIST].y + m_frameThickness + tr.trackYPos;
 
 			//トラック描画
@@ -421,12 +406,8 @@ public:
 				rectT.x = (int32)m_Gui[rcDRAGBAR].x + (Clamp(rectT.x, m_minVR, m_maxVR) - m_minVR) * m_ratioH;
 				rectT.draw(tr.colorBG);
 
-				double zeroY = rectT.y + rectT.h / 2;
-				Line(rectT.x, zeroY, rectT.x + rectT.w, zeroY).draw(1, ColorF(0.1));
-
 				//ライン描画
 				drawLine( rectT, tr, tx, ty );
-
 			}
 		}
 	}
@@ -436,15 +417,15 @@ public:
 		const int32 trackSpacing = 2;
 		int32 ypos = 2;
 
-		for (int32 i = 0; i < m_tracks.size(); ++i)
+		for (int32 i = 0; i < m_Tracks.size(); ++i)
 		{
-			Track& tr = m_tracks[i];
+			Track& tr = m_Tracks[i];
 			tr.trackYPos = ypos;
 
 			if (tr.intTrackNo != -1 && i != tr.intTrackNo)
 			{
 				tr.merged = true;
-				tr.trackYPos = m_tracks[tr.intTrackNo].trackYPos;
+				tr.trackYPos = m_Tracks[tr.intTrackNo].trackYPos;
 			}
 			else
 			{
@@ -457,7 +438,7 @@ public:
 			//トラックリスト描画
 			if (tr.merged == false)
 			{
-				int32 &trackheight = m_tracks[tr.intTrackNo].intHeight;
+				int32 &trackheight = m_Tracks[tr.intTrackNo].intHeight;
 				tr.captionRect = Rect(tx, ty, m_trackWidth, trackheight);
 				tr.captionRect.draw(ColorF(0.2));
 				m_fontM(tr.textCaption).draw(tr.captionRect.movedBy(m_paddingL, 0), ColorF(0.7));
@@ -469,13 +450,13 @@ public:
 					int32 y = tr.baseY + i * fs * 3 + fs;
 					if (y < 0 || y > trackheight) continue;
 
-					const String toolbaricon[] = { U"\xF09D8",U"\xF06FF",U"\xF09DA",U"\xF0FA7",U"\xF06F4",U"\xF0B45",
+					const String m_Toolbar[] = { U"\xF09D8",U"\xF06FF",U"\xF09DA",U"\xF0FA7",U"\xF06F4",U"\xF0B45",
 												   U"\xF02C3",U"\xF09C3",U"\xF0031",U"\xF06F1",U"\xF0339" };
 					int32 bx = tr.captionRect.x + m_paddingL;
 					int32 by = tr.captionRect.y + tr.baseY + i * fs * 3 + fs;
 					m_fontM(tr.lineNames[i]).draw(bx, by, tr.lineColors[i]);
 					Rect btn(bx + fs * 4, by, is, is);
-					for (auto& tbi : toolbaricon)
+					for (auto& tbi : m_Toolbar)
 					{
 						m_iconM(tbi).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.5));
 						btn.x += btn.w;
@@ -505,7 +486,6 @@ public:
 
 		}
 	}
-
 
 	void updateDrag()
 	{
@@ -549,8 +529,10 @@ public:
 		}
 		else if (m_grabState.area == LMARK)   m_timeFrom = Clamp(m_timeFrom + vx, min, m_timeTo);
 		else if (m_grabState.area == RMARK)   m_timeTo = Clamp(m_timeTo + vx, m_timeFrom, max);
-		else if (m_grabState.area == CURSOR)  
-			m_timeCursor = Clamp(m_timeCursor + vx, min, max);
+		else if (m_grabState.area == CURSOR )
+		{
+			if( isRecTime == INACTIVE ) m_timeCursor = Clamp(m_timeCursor + vx, min, max);
+		}
 		else if (m_grabState.area == DRAGBAR) m_viewRange.x = Clamp(m_viewRange.x - vx, m_timeMin, m_timeMax);
 
 		//ドラッグバー上Wheel操作
@@ -578,7 +560,7 @@ public:
 		Rect& tracklist = m_Gui[rcTRACKLIST];
 
 		int32& ft = m_frameThickness;
-		int32 fh = m_fontM.fontSize() + 4;
+		int32 fh = m_fontM.fontSize() + 15;
 
 		title = Rect{ m_Gadget.x, m_Gadget.y     , m_Gadget.w, fh };
 		frame = Rect{ title.x, title.y + fh, title.w, m_Gadget.h - fh };
@@ -615,7 +597,7 @@ public:
 		title.drawShadow(Vec2(6, 6), 24, 3).draw(m_colorTitle);
 		frame.drawShadow(Vec2(6, 6), 24, 3).draw(m_colorFrame);
 		m_iconM(U"\xF0697").draw(title, Palette::Black);
-		m_fontS(m_Caption).draw(title.moveBy(m_iconM.fontSize(),0), Palette::Black);
+		m_fontM(m_Caption).draw(title.moveBy(m_iconM.fontSize(),0), Palette::Black);
 
 		toolbar.draw(m_colorToolbar);
 		dragbar.draw(m_colorDragbar);
@@ -662,7 +644,7 @@ public:
 			if (x % (digit/10) == 0)
 			{
 				String ms = U"{}"_fmt(x);
-				m_fontS(ms).draw(Arg::center(xx, base.y - 2 - m_fontS.fontSize())), m_colorScaleM;
+				m_fontM(ms).draw(Arg::center(xx, base.y - 2 - m_fontM.fontSize())), m_colorScaleM;
 				Line(xx, base.y - 8, xx, base.y).draw(1, m_colorScaleM);
 			}
 
@@ -692,17 +674,180 @@ public:
 	}
 
 	//ツールバーボタン描画
+	enum ID_BTN {ID_PLAY,ID_STEP,ID_STOP,ID_REC,ID_EDIT,ID_CURSOR,ID_FROM,ID_TO,ID_ANCHOR,
+	             ID_CONFIG,ID_LINK };
+	String BTN_PLAY   = U"\xF040A",   BTN_STEP   = U"\xF040E",	BTN_STOP   = U"\xF04DB",
+	       BTN_REC    = U"\xF044B",   BTN_EDIT   = U"\xF12C6",	BTN_CURSOR = U"\xF0523",
+	       BTN_FROM   = U"\xF0367",   BTN_TO     = U"\xF0361",	BTN_ANCHOR = U"\xF0031",
+	       BTN_CONFIG = U"\xF06F1",   BTN_LINK   = U"\xF0339";
+	struct Toolbar
+	{
+		String code;
+		double sec;
+		ColorF colorON;
+		ColorF colorOFF;
+	};
+	const double INACTIVE = 0.0;
+	Array<Toolbar> m_Toolbar = { { BTN_PLAY,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_STEP,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_STOP,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_REC,   0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_EDIT,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_CURSOR,0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_FROM,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_TO,    0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_ANCHOR,0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_CONFIG,0.0, ColorF(0.9) ,ColorF(0.3) },
+								 { BTN_LINK,  0.0, ColorF(0.9) ,ColorF(0.3) } };
+
+	double& isPlayTime = m_Toolbar[ID_PLAY].sec;
+	double& isRecTime = m_Toolbar[ID_REC].sec;
+	double& isStepTime = m_Toolbar[ID_STEP].sec;
+
 	void drawToolbar()
 	{
-		const String toolbaricon[] = { U"\xF040A",U"\xF040E",U"\xF04DB",U"\xF044B",U"\xF12C6",U"\xF0523",
-									   U"\xF0367",U"\xF0361",U"\xF0031",U"\xF06F1",U"\xF0339" };
-		Rect& toolbar = m_Gui[rcTOOLBAR];
 		int32 is = m_iconM.fontSize() + 1;
-		Rect btn(toolbar.x + m_paddingL, toolbar.y, is, is);
-		for (auto& tbi : toolbaricon)
+		Rect btn(m_Gui[rcTOOLBAR].x + m_paddingL, m_Gui[rcTOOLBAR].y, is, is);
+
+		for (int32 i=0; i<m_Toolbar.size(); i++)
 		{
-			m_iconM(tbi).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.3));
+			auto& tbi = m_Toolbar[i];
+			if( tbi.code == BTN_PLAY && tbi.sec != INACTIVE ) 
+				m_iconM(tbi.code).draw(btn, ColorF(0,0.9,0) );
+
+			else if( tbi.code == BTN_REC && tbi.sec != INACTIVE ) 
+				m_iconM(tbi.code).draw(btn, ColorF(0.9,0,0) );
+
+			else if( tbi.code == BTN_STEP && tbi.sec != INACTIVE ) 
+				m_iconM(tbi.code).draw(btn, ColorF(0,0,0.9) );
+
+			else 
+				m_iconM(tbi.code).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.3));
+
 			btn.x += btn.w;
+		}
+	}
+
+	//ツールバー制御
+	void updateToolbar()
+	{
+		int32 is = m_iconM.fontSize() + 1;
+		Rect btn(m_Gui[rcTOOLBAR].x + m_paddingL, m_Gui[rcTOOLBAR].y, is, is);
+		for (int32 i=0; i<m_Toolbar.size(); i++)
+		{
+			auto& tbi = m_Toolbar[i];
+			if( KeyF2.up() )
+			{
+				isPlayTime = INACTIVE ;
+				if( isRecTime == INACTIVE ) isRecTime = Scene::Time();
+			}
+
+			if( btn.mouseOver() && btn.leftClicked() )
+			{
+				if( tbi.code == BTN_PLAY )
+				{
+					isRecTime = isStepTime = INACTIVE ;
+					if( isPlayTime == INACTIVE ) isPlayTime = Scene::Time();
+				}
+				else if( tbi.code == BTN_STEP )
+				{
+					isRecTime = isPlayTime = INACTIVE ;
+					if( isStepTime == INACTIVE ) isStepTime = Scene::Time();
+
+				}
+				else if( tbi.code == BTN_STOP )
+				{
+					isPlayTime = isRecTime = isStepTime = INACTIVE ;
+				}
+				else if( tbi.code == BTN_REC )
+				{
+					isPlayTime = isStepTime = INACTIVE ;
+					if( isRecTime == INACTIVE ) isRecTime = Scene::Time();
+				}
+				else if( tbi.code == BTN_EDIT )
+				{
+				}
+				else if( tbi.code == BTN_CURSOR )
+				{
+				}
+				else if( tbi.code == BTN_FROM )
+				{
+				}
+				else if( tbi.code == BTN_TO )
+				{
+				}
+				else if( tbi.code == BTN_ANCHOR )
+				{
+				}
+				else if( tbi.code == BTN_CONFIG )
+				{
+				}
+				else if( tbi.code == BTN_LINK )
+				{
+				}
+			}
+			btn.x += btn.w;
+
+			if(isRecTime != INACTIVE)
+			{
+				static double prevtime = 0.0;
+
+				double time = (Scene::Time()-isRecTime) *1000;
+				double period = m_timeTo-m_timeFrom;
+				m_timeCursor = (period < time) ? m_timeFrom : time;  
+				if(period < time)	// 満了
+				{
+					m_timeCursor = m_timeFrom;
+					isPlayTime = INACTIVE;
+				}
+				else                // 記録中
+				{
+					m_timeCursor = time;
+
+					if( prevtime+16 < m_timeCursor )
+					{
+						LinePoint lp = {EASEINLINEAR, *m_Probes[ID_X].value, 0};
+						m_Tracks[0].linePoints[ID_X].back().duration = m_timeCursor - m_timeFrom; 
+						m_Tracks[0].linePoints[ID_X] << lp;
+
+						lp.value = *m_Probes[ID_Y].value;
+						m_Tracks[0].linePoints[ID_Y].back().duration = m_timeCursor - m_timeFrom; 
+						m_Tracks[0].linePoints[ID_Y] << lp;
+					
+						prevtime = m_timeCursor;
+					}
+
+					else if( prevtime > m_timeCursor )	//カーソル位置が最初に戻り
+					{
+						m_Tracks[0].linePoints[ID_X].clear();
+						m_Tracks[0].linePoints[ID_Y].clear();
+						LinePoint lp = {EASEINLINEAR, *m_Probes[ID_X].value, 0};
+						m_Tracks[0].linePoints[ID_X] << lp;
+						lp.value = *m_Probes[ID_Y].value;
+						m_Tracks[0].linePoints[ID_Y] << lp;
+						prevtime = m_timeCursor;
+					}
+				}
+			}
+
+			if(isPlayTime != INACTIVE || isStepTime != INACTIVE)	//再生中
+			{
+				if(isPlayTime != INACTIVE)	//再生中のみ自動更新 
+					m_timeCursor = (fmod((Scene::Time()-isPlayTime)*1000, (m_timeTo-m_timeFrom))+m_timeFrom); 
+
+				auto& lpx = m_Tracks[0].linePoints[ID_X];
+				auto& lpy = m_Tracks[0].linePoints[ID_Y];
+				for(uint32 i=0;i<lpx.size();i++)
+				{
+					if( lpx[i].duration > m_timeCursor )
+					{
+						*m_Probes[ID_X].value = lpx[i].value; 
+						*m_Probes[ID_Y].value = lpy[i].value; 
+						break ;
+					}
+				}
+			}
+
 		}
 	}
 
@@ -716,18 +861,18 @@ public:
 		Rect& rectC = m_Gui[rcCURSOR];
 		rectC = Rect{ (int32)m_timeCursor, ty, is, m_Gui[rcTOOLBAR].h };
 
-		if (m_maxVR < m_timeCursor)  //範囲外
-			rectC.x = m_maxVR;
-		else if (m_timeCursor < m_minVR)
-			rectC.x = m_minVR;
-		rectC.x = (int32)m_Gui[rcDRAGBAR].x + (Clamp((double)rectC.x, m_minVR, m_maxVR) - m_minVR) * m_ratioH;
+		if (m_maxVR < m_timeCursor)      rectC.x = m_maxVR;
+		else if (m_timeCursor < m_minVR) rectC.x = m_minVR;
+
+		rectC.x = (int32)m_Gui[rcDRAGBAR].x + 
+					(Clamp((double)rectC.x, m_minVR, m_maxVR) - m_minVR) * m_ratioH;
 		rectC = Rect(rectC.x- is / 2, rectC.y - m_Gui[rcTOOLBAR].h, is, is);
 	}
 
 	//カーソル描画
 	void drawCursor()
 	{
-		int32 fs = m_fontS.fontSize();
+		int32 fs = m_fontM.fontSize();
 		int32 is = m_iconM.fontSize() + 1;
 		int32 ty = m_Gui[rcTRACKLIST].y + m_frameThickness;
 
@@ -735,15 +880,36 @@ public:
 
 		Vec2 cc = Vec2(rectC.x + is / 2, m_Gui[rcDRAGBAR].y + is);
 
-		ColorF colOFF = ColorF(0.9, 0.9, 0.9, 0.3);
-		ColorF colON = ColorF(0, 0, 0, 0.3);
+		ColorF colOFF,colON;
+		if(isRecTime != INACTIVE)
+		{
+			colOFF = ColorF(0.9, 0, 0, 0.3);
+			colON = ColorF(0.3, 0, 0, 0.3);
+		}
+		else if(isPlayTime != INACTIVE)
+		{
+			colOFF = ColorF(0, 0.9, 0, 0.3);
+			colON = ColorF(0, 0.3, 0, 0.3);
+		}
+		else if(isStepTime != INACTIVE)
+		{
+			colOFF = ColorF(0, 0, 0.9, 0.3);
+			colON = ColorF(0, 0, 0.3, 0.3);
+		}
+		else
+		{
+			colOFF = ColorF(0.9, 0.9, 0.9, 0.3);
+			colON = ColorF(0.3, 0.3, 0.3, 0.3);
+		}
+
 		m_iconM(U"\xF0523").draw(rectC, rectC.mouseOver() ? colON : colOFF);
 
 		static double move = 0.0;
 		move += Scene::DeltaTime() * 10;
-		Line(cc, cc + Vec2(0, m_Gui[rcTRACKLIST].h + m_Gui[rcDRAGBAR].h - is)).draw(LineStyle::SquareDot(move), 2, colOFF);
-		String time = U"{}"_fmt((uint32)m_timeCursor);
-		m_fontS(time).draw(Arg::center(cc.x, cc.y - fs));
+		Line(cc, cc + Vec2(0, m_Gui[rcTRACKLIST].h + m_Gui[rcDRAGBAR].h - is))
+									.draw(LineStyle::SquareDot(move), 2, colOFF);
+		String duration = U"{}"_fmt((uint32)m_timeCursor);
+		m_fontM(duration).draw(Arg::center(cc.x, cc.y - fs));
 	}
 
 	//領域選択更新
@@ -779,19 +945,21 @@ public:
 		ColorF colON = ColorF(0, 0, 0, 0.3);
 
 		static double move = 0.0;
-		move += Scene::DeltaTime() * -10;
+		move += Scene::DeltaTime() *-10;
 
 		Vec2 ll = Vec2(rectL.x + is, m_Gui[rcDRAGBAR].y + is);
 		m_iconM(U"\xF0367").draw(rectL, rectL.mouseOver() ? colON : colOFF);
-		Line(ll, ll + Vec2(0, m_Gui[rcTRACKLIST].h + m_Gui[rcDRAGBAR].h - is)).draw(LineStyle::SquareDot(move), 2, colON);
+		Line(ll, ll + Vec2(0, m_Gui[rcTRACKLIST].h + m_Gui[rcDRAGBAR].h - is))
+									.draw(LineStyle::SquareDot(move), 2, colON);
 		String timeL = U"{}"_fmt((uint32)m_timeFrom);
-		m_fontS(timeL).draw(Arg::center(ll.x, ll.y+fs+10));
+		m_fontM(timeL).draw(Arg::center(ll.x, ll.y+fs+14));
 
 		Vec2 rr = Vec2(rectR.x , m_Gui[rcDRAGBAR].y + is);
 		m_iconM(U"\xF0361").draw(rectR, rectR.mouseOver() ? colON : colOFF);
-		Line(rr, rr + Vec2(0, m_Gui[rcTRACKLIST].h + m_Gui[rcDRAGBAR].h - is)).draw(LineStyle::SquareDot(move), 2, colON);
+		Line(rr, rr + Vec2(0, m_Gui[rcTRACKLIST].h + m_Gui[rcDRAGBAR].h - is))
+									.draw(LineStyle::SquareDot(move), 2, colON);
 		String timeR = U"{}"_fmt((uint32)m_timeTo);
-		m_fontS(timeR).draw(Arg::center(rr.x, rr.y + fs+10));
+		m_fontM(timeR).draw(Arg::center(rr.x, rr.y + fs+14));
 	}
 
 	void main()
