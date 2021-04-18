@@ -281,7 +281,7 @@ void Main()
     Float2 origin {  300, 200 };
     Float2 anchor { +120, -20 };
     Float2 target { +0, +0 };
-    Float2 divide {  +10, +10 };
+    Float2 divide {  +0, +0 };
 
     int32 ngon = 6;
     int32 angle = 0;
@@ -399,7 +399,7 @@ void Main()
         for (auto &t : TRIANGLES) pattern << Triangle( t.p0/10,t.p1/10,t.p2/10 );
 #endif
 
-//	    Array<Triangle> pattern = {};
+	    Array<Triangle> pattern = {};
         Array<Shape2D> shapes = SpeechBalloon2(origin, ngon, angle, size, rotate, anchor, scale, stretch, divide, target, detail, pattern);
 
         timeline.main();
