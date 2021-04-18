@@ -13,7 +13,7 @@ https://github.com/Siv3D/OpenSiv3D/tree/v6_master
 
 Step-2, Place the files in this repository in the Windows Desktop folder.
 
-# for exsamples
+# for examples
 ![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/burst.png?raw=true)
 ![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/circle.png?raw=true)
 ![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/cloud1.png?raw=true)
