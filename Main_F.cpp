@@ -19,7 +19,8 @@ Array<Shape2D> SpeechBalloon2( const Float2& center,            // 中心座標
                         const Float2& stretch = Float2{ 1,1 },  // 引伸ばし倍率
                         const Float2& divide = Float2{ 0,0 },   // 分割点座標(中心座標からの相対位置)
                         const Float2& target = Float2{ 0,0 },   // 吹出し目標点の座標(中心座標からの相対位置)
-                        float detail = 40 ) 
+                        float detail = 0,                       // パターン高さ
+                        Array<Triangle> pattern = {} )          // パターン形状指定 
 {
     Float2 div = center + divide;   // 原点から相対指定
     Float2 anc = center + anchor;
@@ -30,38 +31,24 @@ Array<Shape2D> SpeechBalloon2( const Float2& center,            // 中心座標
     if (str.y < 1) str.y = 1;
 
     //円弧パターン
-    Array<Triangle> TCIR;
-    int32 step = 18;
-    for (int32 i = step; i <= 180; i += step)
+    if( pattern.size() == 0 )
     {
-        double cx0 = ((1 - Math::Cos(ToRadians(i - step))) / 2);
-        double cx1 = ((1 - Math::Cos(ToRadians(i))) / 2);
-        Vec2 p0 = Vec2{ cx0, 0 };
-        Vec2 p1 = Vec2{ cx0, fabs(Math::Sin(ToRadians(i - step))) };
-        Vec2 p2 = Vec2{ cx1, fabs(Math::Sin(ToRadians(i))) };
-        Vec2 p3 = Vec2{ cx1, 0 };
-
-        TCIR << Triangle{ p0, p1, p2 };
-        TCIR << Triangle{ p0, p2, p3 };
+        int32 step = 18;
+        for (int32 i = step; i <= 180; i += step)
+        {
+            double cx0 = ((1 - Math::Cos(ToRadians(i - step))) / 2);
+            double cx1 = ((1 - Math::Cos(ToRadians(i))) / 2);
+            Vec2 p0 = Vec2{ cx0, 0 };
+            Vec2 p1 = Vec2{ cx0, fabs(Math::Sin(ToRadians(i - step))) };
+            Vec2 p2 = Vec2{ cx1, fabs(Math::Sin(ToRadians(i))) };
+            Vec2 p3 = Vec2{ cx1, 0 };
+            pattern << Triangle{ p0, p1, p2 };
+            pattern << Triangle{ p0, p2, p3 };
+        }
     }
-    
-    //波パターン
-	Array<Triangle> TCOS;
-	step = 18;
-	for (int32 i = step; i <= 360; i += step)
-	{
-		double sx0 = (double)(i - step) / 360;
-		double sx1 = (double)i / 360;
-		Vec2 p0 = Vec2(sx0, 0);
-		Vec2 p1 = Vec2(sx0, -Math::Cos(ToRadians(i - step)) +1);
-		Vec2 p2 = Vec2(sx1, -Math::Cos(ToRadians(i)) +1);
-		Vec2 p3 = Vec2(sx1, 0);
-		TCOS << Triangle{ p0,p1,p2 };
-		TCOS << Triangle{ p0,p2,p3 };
-	}
 
     //基準多角形
-    Shape2D basis = Shape2D::Ngon(ngon,size,center,ToRadians(angle));
+    Shape2D basis = Shape2D::Ngon(ngon,size,center,ToRadians(angle+45));
     Array<Float2> basis_v = basis.vertices();
     Array<TriangleIndex> basis_i = basis.indices();
 
@@ -103,13 +90,12 @@ Array<Shape2D> SpeechBalloon2( const Float2& center,            // 中心座標
         if (i == basis_v.size()) to = 0;	    //最後は最初へ繋ぐ
         double length = Geometry2D::Distance(basis_v[from], basis_v[to]);//底辺の長さ
         double retio = (double)size / length;	//拡縮比
-
         double rot = Math::Atan2(basis_v[to].y - basis_v[from].y, basis_v[to].x - basis_v[from].x);
-        Mat3x2 mat_a = mat_i.scaled(Vec2(length, detail)).rotated(rot);
+        Mat3x2 mat_a = mat_i.scaled(Vec2(length, -detail)).rotated(rot);
 
-        for (uint16 ii=0;ii<TCOS.size();ii++)
+        for (uint16 ii=0;ii<pattern.size();ii++)
         {
-            const auto& q = TCOS[ii];
+            const auto& q = pattern[ii];
             Array<Vec2> psrc = { q.p0, q.p1, q.p2 };
             Array<Vec2> pdst(3) ;
 
@@ -128,7 +114,7 @@ Array<Shape2D> SpeechBalloon2( const Float2& center,            // 中心座標
     //吹き出し部
 	if (target != Float2(0, 0))
 	{
-		double r = 10;
+		double r = 30;
         int32 num = 10;
 		double ot90 = Math::Atan2(center.y - trg.y, center.x - trg.x) + ToRadians(90);
 		Vec2 ot = Vec2(Math::Cos(ot90), Math::Sin(ot90)) *r;
@@ -168,7 +154,7 @@ Shape2D SpeechBalloon1(const Float2& center,// 中心座標
     Float2 anc = center + anchor;
     Float2 trg = center + target;
     Float2 str = stretch;
-    int32 ang = angle;
+    int32 ang = angle+45;
 
     if (str.x < 1) str.x = 1;       // 引伸しは縮小に対応しない
     if (str.y < 1) str.y = 1;
@@ -282,7 +268,7 @@ void guiSyncMarker( PARAMID m_id, V origin, V value )
 
 void Main()
 {
-    Window::Resize(1366, 768);
+    Window::Resize(1024, 768);
     Window::SetStyle(WindowStyle::Sizable);         // ウィンドウを手動リサイズ可能にする
     Scene::SetBackground(ColorF(0.8, 0.9, 1.0));    // ウィンドウサイズに合わせて拡縮
 
@@ -297,13 +283,13 @@ void Main()
     Float2 target { +0, +0 };
     Float2 divide {  +10, +10 };
 
-    uint32 ngon = 6;
-    int32  angle = 0;
-    uint32 size = 130;
-    int32  rotate = 0;
+    int32 ngon = 6;
+    int32 angle = 0;
+    int32 size = 130;
+    int32 rotate = 0;
 
     uint32 nsubngon = 40;
-    int32 detail = -10;
+    int32 detail = 10;
     float burst = 1.0;
     uint8 wire = 0;
 
@@ -331,8 +317,19 @@ void Main()
     Timeline timeline = {};
     timeline.setup(Rect{ 100,100,1280,300 });
     
-    const Array<Timeline::PARAMLINE> params = {{ &origin.x,U"xpos",Color(U"#FF0000") },
-                                               { &origin.y,U"ypos",Color(U"#00FF00") }};
+    const Array<Timeline::PARAMLINE> params = {{ (void*)&origin.x, U"f_xpos",Color(U"#FF0000") },
+                                               { (void*)&origin.y, U"f_ypos",Color(U"#00FF00") },
+                                               { (void*)&ngon,     U"i_ngon",Color(U"#0000FF") },
+                                               { (void*)&angle,    U"i_angle",Color(U"#FFFF00") },
+                                               { (void*)&size,     U"i_size",Color(U"#00FFFF") },
+                                               { (void*)&detail,   U"i_detail",Color(U"#FF00FF") },
+                                               { (void*)&rotate,   U"i_rotate",Color(U"#880000") },
+                                               { (void*)&anchor.x, U"f_anchor.x",Color(U"#008800") },
+                                               { (void*)&anchor.y, U"f_anchor.y",Color(U"#000088") },
+                                               { (void*)&stretch.x,U"f_stretch.x",Color(U"#888800") },
+                                               { (void*)&stretch.y,U"f_stretch.y",Color(U"#008888") },
+                                               { (void*)&divide.x, U"f_divide.x",Color(U"#880088") },
+                                               { (void*)&divide.y, U"f_divide.y",Color(U"#888888") }};
     timeline.setData2( U"TestXY",0, 200, Color(U"#334433"), params, timeline.m_timeCursor, 10000 );
 
     while (System::Update())                        // メインループ
@@ -344,8 +341,66 @@ void Main()
 
         // 吹き出し形状テスト ※線描画で表示を選択
 //        Shape2D shape = SpeechBalloon1(origin, ngon, angle, size, rotate, anchor, scale, stretch, divide, target);
-        Array<Shape2D> shapes = SpeechBalloon2(origin, ngon, angle, size, rotate, anchor, scale, stretch, divide, target, detail);
+//        Array<Shape2D> shapes = SpeechBalloon2(origin, ngon, angle, size, rotate, anchor, scale, stretch, divide, target, detail);
+#if 0
+        //波パターン(ユーザー定義)
+	    Array<Triangle> pattern;
+	    int32 step = 18;
+	    for (int32 i = step; i <= 360; i += step)
+	    {
+		    double sx0 = (double)(i - step) / 360;
+		    double sx1 = (double)i / 360;
+		    Vec2 p0 = Vec2(sx0, 0);
+		    Vec2 p1 = Vec2(sx0, -Math::Cos(ToRadians(i - step)) +1);
+		    Vec2 p2 = Vec2(sx1, -Math::Cos(ToRadians(i)) +1);
+		    Vec2 p3 = Vec2(sx1, 0);
+		    pattern << Triangle{ p0,p1,p2 };
+		    pattern << Triangle{ p0,p2,p3 };
+	    }
+#endif
+#if 0
+        //バーストパターン(ユーザー定義)
+	    Array<Triangle> pattern;
+	    int32 step = 18;
+	    for (int32 i = step; i <= 180; i += step)
+	    {
+		    double sx0 = (double)(i - step) / 180;
+		    double sx1 = (double)i / 180;
+		    Vec2 p0 = Vec2(sx0, 0);
+            Vec2 p1 = Vec2{sx0, 1.05-fabs(Math::Cos(ToRadians(i - step))) };
+            Vec2 p2 = Vec2{sx1, 1.05-fabs(Math::Cos(ToRadians(i))) };
+		    Vec2 p3 = Vec2(sx1, 0);
+            if( i==step ) p1 = p0 ;
+            if( i==180 ) p2 = p3 ;
+		    pattern << Triangle{ p0,p1,p2 };
+		    pattern << Triangle{ p0,p2,p3 };
+	    }
+#endif
+#if 0
+        //矩形パターン(ユーザー定義)
+	    Array<Triangle> TRIANGLES { 
+        Triangle({0,0},{9,5},{9,0} ),
+        Triangle({9,0},{9,20},{10,20} ), Triangle({9,0},{10,20},{10,0} ),
+        Triangle({10,0},{10,0},{11,0} ), Triangle({11,0},{11,0},{12,0} ),
+        Triangle({12,0},{12,19},{13,19} ), Triangle({12,0},{13,19},{13,0} ),
+        Triangle({13,0},{13,5},{19,0} )
+        };
+	    Array<Triangle> pattern ;
+        for (auto &t : TRIANGLES) pattern << Triangle( t.p0/19,t.p1/19,t.p2/19 );
+#endif
+#if 0
+        //歯車パターン(ユーザー定義)
+	    Array<Triangle> TRIANGLES { 
+        Triangle({0,0},{2.5,0},{2.5,0} ),
+        Triangle({2.5,0},{2.5,10},{7.5,10} ), Triangle({2.5,0},{7.5,10},{7.5,0} ),
+        Triangle({7.5,0},{10,0},{10,0} )
+        };
+	    Array<Triangle> pattern ;
+        for (auto &t : TRIANGLES) pattern << Triangle( t.p0/10,t.p1/10,t.p2/10 );
+#endif
 
+//	    Array<Triangle> pattern = {};
+        Array<Shape2D> shapes = SpeechBalloon2(origin, ngon, angle, size, rotate, anchor, scale, stretch, divide, target, detail, pattern);
 
         timeline.main();
         {
@@ -390,9 +445,9 @@ void Main()
 
         // テスト用UI(パラメータ) ※マウスオーバーのウィール操作で値変更、左クリックで初期値
         double wheel = Mouse::Wheel();
-        ngon = guiValue( fontS, U"多角形:{}"_fmt(ngon), guiRects[NGON], wheel, (uint32)6, ngon, 3, 256);
+        ngon = guiValue( fontS, U"多角形:{}"_fmt(ngon), guiRects[NGON], wheel, (int32)6, ngon, 3, 256);
         angle = guiValue( fontS, U"角度:{}"_fmt(angle), guiRects[ANGLE], wheel, (int32)0, angle, -360, 720);
-        size = guiValue( fontS, U"大きさ:{}"_fmt(size), guiRects[SIZE], wheel, (uint32)140, size, 10, 400);
+        size = guiValue( fontS, U"大きさ:{}"_fmt(size), guiRects[SIZE], wheel, (int32)140, size, 10, 400);
 
         nsubngon = guiValue( fontS, U"分割A:{}"_fmt(nsubngon), guiRects[NSUB], wheel, (uint32)40, nsubngon, 4, 100);
         detail = guiValue( fontS, U"詳細:{}"_fmt(detail), guiRects[DETAIL], wheel, (int32)10, detail, -100, 100);
