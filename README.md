@@ -13,6 +13,24 @@ https://github.com/Siv3D/OpenSiv3D/tree/v6_master
 
 Step-2, Place the files in this repository in the Windows Desktop folder.
 
+# for exsamples
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/burst.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/circle.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/cloud1.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/cloud2.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/comm.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/fourside.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/gear.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/long.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/plum.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/square.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/stretch_circle.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/tilt.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/uni.png ?raw=true)
+![screenshot](https://github.com/itakawa/testSpeechBaloon/blob/main/doc/wave.png ?raw=true)
+
+
+
 
 
 
