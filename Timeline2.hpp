@@ -38,21 +38,13 @@ private:
 
 	struct Probe
 	{
-		float* value = nullptr;
+		void* value = nullptr;
 	};
 	Array<Probe> m_Probes;
-	enum PROBE {ID_X, ID_Y};
+//	enum PROBE {ID_X, ID_Y};
 
 	struct LinePoint
 	{
-/*
-		EaseType easeType;
-		double value;
-		uint32 timeStart;
-		uint32 timeLength;
-		double lineBegin;
-		double lineEnd;
-*/
 		EaseType easeType;
 		double value;
 		double duration;
@@ -60,7 +52,7 @@ private:
 
 	struct Track
 	{
-		String textCaption = U"Unknown";
+		String textCaption = U"Unknown timeline";
 		ColorF colorBG = ColorF{};
 		uint32 intStartTime = 0;
 		uint32 intLengthTime = 0;
@@ -77,10 +69,6 @@ private:
 		Array<String> lineNames;		//もうタイムラインないの線は水平のみ
 		Array<Color> lineColors;
 		Array<Array<LinePoint>> linePoints;
-
-
-
-
 
 		double dblLo = -1.0;
 		double dblHi = 1.0;
@@ -130,7 +118,7 @@ private:
 	ColorF m_colorScaleS = ColorF(0.8);
 
 
-	String m_Caption = U"Unknown";
+	String m_Caption = U"Unknown timeline";
 	bool m_Hidden;
 	Rect m_Gadget;
 
@@ -214,7 +202,7 @@ public:
 	}
 	struct PARAMLINE
 	{
-		float* value;
+		void* value;
 		String linemname;
 		Color  linecolor;
 	};
@@ -239,7 +227,7 @@ public:
 			tr.lineNames << pl.linemname;
 			tr.lineColors << pl.linecolor;
 
-			LinePoint lp = {EASEINLINEAR, *m_Probes[ID_X].value, 0};
+			LinePoint lp = {EASEINLINEAR, double(*(float *)m_Probes[i].value), 0};
 			tr.linePoints[i] << lp;
 		}
 
@@ -259,6 +247,7 @@ public:
 		updateCursor();
 		updateSelection();
 		updateToolbar();
+		updateTrackToolbar();
 
 		if (MouseL.up()) m_grabState.area = RELEASE;
 		return has_update;
@@ -412,10 +401,14 @@ public:
 		}
 	}
 
+	//トラック一覧描画
 	void drawTrackList()
 	{
 		const int32 trackSpacing = 2;
 		int32 ypos = 2;
+
+		int32 fs = m_fontM.fontSize();
+		int32 is = m_iconM.fontSize() + 1;
 
 		for (int32 i = 0; i < m_Tracks.size(); ++i)
 		{
@@ -427,13 +420,13 @@ public:
 				tr.merged = true;
 				tr.trackYPos = m_Tracks[tr.intTrackNo].trackYPos;
 			}
-			else
-			{
-				ypos += tr.intHeight + trackSpacing;
-			}
+			else ypos += tr.intHeight + trackSpacing;
 
 			int32 tx = m_Gui[rcTRACKLIST].x + m_frameThickness;
 			int32 ty = m_Gui[rcTRACKLIST].y + m_frameThickness + tr.trackYPos;
+
+
+
 
 			//トラックリスト描画
 			if (tr.merged == false)
@@ -441,24 +434,56 @@ public:
 				int32 &trackheight = m_Tracks[tr.intTrackNo].intHeight;
 				tr.captionRect = Rect(tx, ty, m_trackWidth, trackheight);
 				tr.captionRect.draw(ColorF(0.2));
+
 				m_fontM(tr.textCaption).draw(tr.captionRect.movedBy(m_paddingL, 0), ColorF(0.7));
-				int32 fs = m_fontM.fontSize();
-				int32 is = m_iconM.fontSize() + 1;
+
+//				const Array<String> trackToolbar = { U"\xF06FF",U"\xF0FA7",U"\xF06F4",U"\xF0B45",
+//								   					 U"\xF02C3",U"\xF09C3",U"\xF0031",U"\xF06F1",U"\xF0339" };
+				Rect btn(tx + fs * 10, ty, is, is);
+				for (int32 i=0; i<m_TrackToolbar.size(); i++)
+				{
+					auto& tbi = m_TrackToolbar[i];
+/*
+					if     ( tbi.code == TTB_FUNC1 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC2 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC3 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC4 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC5 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC6 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC7 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else if( tbi.code == TTB_FUNC8 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+					else 
+*/					m_iconM(tbi.code).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.5));
+
+					btn.x += btn.w;
+				}
 
 				for (int32 i = 0;i < tr.lineNames.size();i++)
 				{
-					int32 y = tr.baseY + i * fs * 3 + fs;
-					if (y < 0 || y > trackheight) continue;
+					int32 yy = tr.baseY + i * fs * 3 ;
+					if (yy < fs*2 || yy > trackheight) continue;	//トラックラインの表示上限
 
-					const String m_Toolbar[] = { U"\xF09D8",U"\xF06FF",U"\xF09DA",U"\xF0FA7",U"\xF06F4",U"\xF0B45",
-												   U"\xF02C3",U"\xF09C3",U"\xF0031",U"\xF06F1",U"\xF0339" };
+//					const String linetoolbar[] = { U"\xF09D8",U"\xF09DA",U"\xF06FF",U"\xF0FA7",U"\xF06F4",U"\xF0B45",
+//												 U"\xF02C3",U"\xF09C3",U"\xF0031",U"\xF06F1",U"\xF0339" };
 					int32 bx = tr.captionRect.x + m_paddingL;
-					int32 by = tr.captionRect.y + tr.baseY + i * fs * 3 + fs;
+					int32 by = tr.captionRect.y + yy;
 					m_fontM(tr.lineNames[i]).draw(bx, by, tr.lineColors[i]);
-					Rect btn(bx + fs * 4, by, is, is);
-					for (auto& tbi : m_Toolbar)
+					Rect btn(bx + fs * 6, by, is, is);
+					for (int32 i=0; i<m_LineToolbar.size(); i++)
 					{
-						m_iconM(tbi).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.5));
+						auto& tbi = m_LineToolbar[i];
+/*
+						if     ( tbi.code == LTB_FUNC1 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC2 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC3 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC4 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC5 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC6 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC7 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else if( tbi.code == LTB_FUNC8 ) m_iconM(tbi.code).draw(btn, tbi.colorON );
+						else 
+*/						m_iconM(tbi.code).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.5));
+
 						btn.x += btn.w;
 					}
 				}
@@ -484,6 +509,15 @@ public:
 
 			}
 
+
+
+
+
+
+
+
+
+
 		}
 	}
 
@@ -502,14 +536,12 @@ public:
 		Rect& content = m_Gui[rcCONTENT];
 
 		//左ドラッグ開始
-		if      (select.leftClicked())  
-			m_grabState.area = SELECTION;
-		else if (lmark.leftClicked())
-			m_grabState.area = LMARK;
-		else if (rmark.leftClicked())
-			m_grabState.area = RMARK;
-		else if (cursor.leftClicked())  m_grabState.area = CURSOR;
-		else if (dragbar.leftClicked())	m_grabState.area = DRAGBAR;
+		if      (select.leftClicked())		m_grabState.area = SELECTION;
+		else if (lmark.leftClicked())		m_grabState.area = LMARK;
+		else if (rmark.leftClicked())		m_grabState.area = RMARK;
+		else if (cursor.leftClicked())		m_grabState.area = CURSOR;
+		else if (dragbar.leftClicked())		m_grabState.area = DRAGBAR;
+		else if (tracklist.leftClicked())	m_grabState.area = TRACKLIST;
 
 		// 左ドラッグ
 		double vx = (Cursor::Delta().x * m_viewRange.w / dragbar.w);
@@ -548,6 +580,16 @@ public:
 				double vel = Mouse::Wheel() * m_viewRange.w / 10.0;
 				m_viewRange.w = Clamp(m_viewRange.w + vel, 1.0, 100000.0);
 			}
+		}
+		else if (m_grabState.area == TRACKLIST)
+		{
+			int32 fs = m_fontM.fontSize();
+			auto& tr = m_Tracks[ m_grabState.value ];
+
+			int32 rangeY = tr.lineNames.size() * fs * 3 +fs;
+			tr.baseY += Cursor::Delta().y;
+			if ( tr.baseY > 0) tr.baseY = 0;
+			if ( tr.baseY < tr.intHeight-rangeY) tr.baseY = tr.intHeight-rangeY ;
 		}
 	}
 
@@ -610,6 +652,7 @@ public:
 		drawSelection();
 	}
 
+	//目盛描画
 	void drawScale( Point base )
 	{
 		int32 unitS = m_unitTime;
@@ -633,6 +676,7 @@ public:
 
 	}
 
+	//目盛線描画
 	void drawScaleLine(Point base, int32 units, int32 digit )
 	{
 		double xxx = (int32)m_minVR % 10;
@@ -650,20 +694,20 @@ public:
 
 			else
 			{
-				if (digit == 100)
-				{
-					Line(xx, base.y - 6, xx, base.y).draw(1, m_colorScaleL);
-				}
+				if (digit == 100) Line(xx, base.y - 6, xx, base.y).draw(1, m_colorScaleL);
+
 				else if (digit == 1000)
 				{
 					if (x % 10 == 0) Line(xx, base.y - 8, xx, base.y).draw(1, m_colorScaleL);
 					else Line(xx, base.y - 6, xx, base.y).draw(1, m_colorScaleL);
 				}
+
 				else if (digit == 10000)
 				{
 					if      (x % 100 == 0) Line(xx, base.y - 7, xx, base.y).draw(1, m_colorScaleM);
 					else if (x % 10 == 0) Line(xx, base.y - 5, xx, base.y).draw(1, m_colorScaleL);
 				}
+
 				else
 				{
 					if      (x % 1000 == 0) Line(xx, base.y - 8, xx, base.y).draw(1, m_colorScaleS);
@@ -673,9 +717,8 @@ public:
 		}
 	}
 
-	//ツールバーボタン描画
-	enum ID_BTN {ID_PLAY,ID_STEP,ID_STOP,ID_REC,ID_EDIT,ID_CURSOR,ID_FROM,ID_TO,ID_ANCHOR,
-	             ID_CONFIG,ID_LINK };
+	//ツールバーボタン定義
+	enum ID_BTN {ID_PLAY,ID_STEP,ID_STOP,ID_REC,ID_EDIT,ID_CURSOR,ID_FROM,ID_TO,ID_ANCHOR,ID_CONFIG,ID_LINK };
 	String BTN_PLAY   = U"\xF040A",   BTN_STEP   = U"\xF040E",	BTN_STOP   = U"\xF04DB",
 	       BTN_REC    = U"\xF044B",   BTN_EDIT   = U"\xF12C6",	BTN_CURSOR = U"\xF0523",
 	       BTN_FROM   = U"\xF0367",   BTN_TO     = U"\xF0361",	BTN_ANCHOR = U"\xF0031",
@@ -700,10 +743,45 @@ public:
 								 { BTN_CONFIG,0.0, ColorF(0.9) ,ColorF(0.3) },
 								 { BTN_LINK,  0.0, ColorF(0.9) ,ColorF(0.3) } };
 
+	//トラックツールバーボタン定義
+	enum ID_TTB {TT_FUNC1,TT_FUNC2,TT_FUNC3,TT_FUNC4,TT_FUNC5,TT_FUNC6,TT_FUNC7,TT_FUNC8 };
+
+	String TTB_FUNC1  = U"\xF06FF",   TTB_FUNC2   = U"\xF0FA7",	TTB_FUNC3 = U"\xF06F4",
+	       TTB_FUNC4  = U"\xF0B45",   TTB_FUNC5   = U"\xF02C3",	TTB_FUNC6 = U"\xF0031",
+	       TTB_FUNC7  = U"\xF06F1",   TTB_FUNC8   = U"\xF0339";
+
+	Array<Toolbar> m_TrackToolbar = { { TTB_FUNC1,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								   	  { TTB_FUNC2,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { TTB_FUNC3,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { TTB_FUNC4,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { TTB_FUNC5,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { TTB_FUNC6,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { TTB_FUNC7,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { TTB_FUNC8,  0.0, ColorF(0.9) ,ColorF(0.3) }};
+
+	//ラインツールバーボタン定義
+	enum ID_LTB {LT_FUNC1,LT_FUNC2,LT_FUNC3,LT_FUNC4,LT_FUNC5,LT_FUNC6,LT_FUNC7,LT_FUNC8 };
+
+	String  LTB_FUNC1  = U"\xF0051",   LTB_FUNC2   = U"\xF0058",
+			LTB_FUNC3  = U"\xF06FF",   LTB_FUNC4   = U"\xF0FA7",	LTB_FUNC5 = U"\xF06F4",
+	        LTB_FUNC6  = U"\xF0B45",   LTB_FUNC7   = U"\xF02C3",	LTB_FUNC8 = U"\xF0031",
+	        LTB_FUNC9  = U"\xF06F1",   LTB_FUNC10   = U"\xF0339";
+	Array<Toolbar> m_LineToolbar = {  { LTB_FUNC1,  0.0, ColorF(0.9) ,ColorF(0.3) },
+								   	  { LTB_FUNC2,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC3,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC4,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC5,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC6,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC7,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC8,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC9,  0.0, ColorF(0.9) ,ColorF(0.3) },
+									  { LTB_FUNC10, 0.0, ColorF(0.9) ,ColorF(0.3) }};
+
 	double& isPlayTime = m_Toolbar[ID_PLAY].sec;
 	double& isRecTime = m_Toolbar[ID_REC].sec;
 	double& isStepTime = m_Toolbar[ID_STEP].sec;
 
+	//ツールバー描画
 	void drawToolbar()
 	{
 		int32 is = m_iconM.fontSize() + 1;
@@ -712,17 +790,10 @@ public:
 		for (int32 i=0; i<m_Toolbar.size(); i++)
 		{
 			auto& tbi = m_Toolbar[i];
-			if( tbi.code == BTN_PLAY && tbi.sec != INACTIVE ) 
-				m_iconM(tbi.code).draw(btn, ColorF(0,0.9,0) );
-
-			else if( tbi.code == BTN_REC && tbi.sec != INACTIVE ) 
-				m_iconM(tbi.code).draw(btn, ColorF(0.9,0,0) );
-
-			else if( tbi.code == BTN_STEP && tbi.sec != INACTIVE ) 
-				m_iconM(tbi.code).draw(btn, ColorF(0,0,0.9) );
-
-			else 
-				m_iconM(tbi.code).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.3));
+			if     ( tbi.code == BTN_PLAY && tbi.sec != INACTIVE ) m_iconM(tbi.code).draw(btn, ColorF(0,0.9,0) );
+			else if( tbi.code == BTN_REC && tbi.sec != INACTIVE ) m_iconM(tbi.code).draw(btn, ColorF(0.9,0,0) );
+			else if( tbi.code == BTN_STEP && tbi.sec != INACTIVE ) m_iconM(tbi.code).draw(btn, ColorF(0,0,0.9) );
+			else m_iconM(tbi.code).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.3));
 
 			btn.x += btn.w;
 		}
@@ -788,7 +859,7 @@ public:
 			}
 			btn.x += btn.w;
 
-			if(isRecTime != INACTIVE)
+			if(isRecTime != INACTIVE)	//録画実行中
 			{
 				static double prevtime = 0.0;
 
@@ -806,25 +877,31 @@ public:
 
 					if( prevtime+16 < m_timeCursor )
 					{
-						LinePoint lp = {EASEINLINEAR, *m_Probes[ID_X].value, 0};
-						m_Tracks[0].linePoints[ID_X].back().duration = m_timeCursor - m_timeFrom; 
-						m_Tracks[0].linePoints[ID_X] << lp;
-
-						lp.value = *m_Probes[ID_Y].value;
-						m_Tracks[0].linePoints[ID_Y].back().duration = m_timeCursor - m_timeFrom; 
-						m_Tracks[0].linePoints[ID_Y] << lp;
-					
+						auto &mlp = m_Tracks[0].linePoints;
+						for( int32 ii=0; ii<mlp.size(); ii++ )    //ライン分の情報収集
+						{
+							auto &tln = m_Tracks[0].lineNames[ii];
+							LinePoint lp;
+							if      ( tln[0] =='f' ) lp = {EASEINLINEAR, double(*(float *)m_Probes[ii].value), 0};
+							else if ( tln[0] =='i' ) lp = {EASEINLINEAR, double(*(int32 *)m_Probes[ii].value), 0};
+							mlp[ii].back().duration = m_timeCursor - m_timeFrom; 
+							mlp[ii] << lp;
+						}					
 						prevtime = m_timeCursor;
 					}
 
 					else if( prevtime > m_timeCursor )	//カーソル位置が最初に戻り
 					{
-						m_Tracks[0].linePoints[ID_X].clear();
-						m_Tracks[0].linePoints[ID_Y].clear();
-						LinePoint lp = {EASEINLINEAR, *m_Probes[ID_X].value, 0};
-						m_Tracks[0].linePoints[ID_X] << lp;
-						lp.value = *m_Probes[ID_Y].value;
-						m_Tracks[0].linePoints[ID_Y] << lp;
+						auto &mlp = m_Tracks[0].linePoints;
+						for( int32 ii=0; ii<mlp.size(); ii++ )
+						{
+							auto &tln = m_Tracks[0].lineNames[ii];
+							mlp[ii].clear();
+							LinePoint lp;
+							if      ( tln[0] =='f' ) lp = {EASEINLINEAR, double(*(float *)m_Probes[ii].value), 0};//小数値
+							else if ( tln[0] =='i' ) lp = {EASEINLINEAR, double(*(int32 *)m_Probes[ii].value), 0};//整数値
+							mlp[ii] << lp;
+						}
 						prevtime = m_timeCursor;
 					}
 				}
@@ -835,19 +912,148 @@ public:
 				if(isPlayTime != INACTIVE)	//再生中のみ自動更新 
 					m_timeCursor = (fmod((Scene::Time()-isPlayTime)*1000, (m_timeTo-m_timeFrom))+m_timeFrom); 
 
-				auto& lpx = m_Tracks[0].linePoints[ID_X];
-				auto& lpy = m_Tracks[0].linePoints[ID_Y];
-				for(uint32 i=0;i<lpx.size();i++)
+				auto &mlp = m_Tracks[0].linePoints;
+				for( int32 i=0; i<mlp.size(); i++ )
 				{
-					if( lpx[i].duration > m_timeCursor )
+					for( int32 ii=0;i<mlp[i].size();ii++)
 					{
-						*m_Probes[ID_X].value = lpx[i].value; 
-						*m_Probes[ID_Y].value = lpy[i].value; 
-						break ;
+						if( mlp[i][ii].duration > m_timeCursor )
+						{
+							auto &tln = m_Tracks[0].lineNames[i];
+							LinePoint lp;
+							if      ( tln[0] =='f' ) *(float *)m_Probes[i].value = mlp[i][ii].value; //小数値
+							else if ( tln[0] =='i' ) *(int32 *)m_Probes[i].value = mlp[i][ii].value; //整数値
+							break ;
+						}
 					}
 				}
 			}
 
+		}
+	}
+	
+	//トラックツールバー制御
+	void updateTrackToolbar()
+	{
+// --- ここから ---
+		const int32 trackSpacing = 2;
+		int32 ypos = 2;
+
+		int32 fs = m_fontM.fontSize();
+		int32 is = m_iconM.fontSize() + 1;
+
+		for (int32 i = 0; i < m_Tracks.size(); ++i)
+		{
+			Track& tr = m_Tracks[i];
+			tr.trackYPos = ypos;
+
+			if (tr.intTrackNo != -1 && i != tr.intTrackNo)
+			{
+				tr.merged = true;
+				tr.trackYPos = m_Tracks[tr.intTrackNo].trackYPos;
+			}
+			else ypos += tr.intHeight + trackSpacing;
+
+			int32 tx = m_Gui[rcTRACKLIST].x + m_frameThickness;
+			int32 ty = m_Gui[rcTRACKLIST].y + m_frameThickness + tr.trackYPos;
+
+			//トラックリスト描画
+			if (tr.merged == false)
+			{
+				int32 &trackheight = m_Tracks[tr.intTrackNo].intHeight;
+				tr.captionRect = Rect(tx, ty, m_trackWidth, trackheight);
+				tr.captionRect.draw(ColorF(0.2));
+
+//				m_fontM(tr.textCaption).draw(tr.captionRect.movedBy(m_paddingL, 0), ColorF(0.7));
+
+				Rect btn(tx + fs * 10, ty, is, is);
+//				for (auto& tbi : trackToolbar)
+//				{
+//					m_iconM(tbi).draw(btn, btn.mouseOver() ? ColorF(0.9) : ColorF(0.5));
+//					btn.x += btn.w;
+//				}
+// --- ここまで、描画と同じ処理 こういうのどう記述すりゃいいんだろ
+
+				for (int32 i=0; i<m_TrackToolbar.size(); i++)
+				{
+					auto& tbi = m_TrackToolbar[i];
+					if( btn.mouseOver() && btn.leftClicked() )
+					{
+						if( tbi.code == TTB_FUNC1 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC2 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC3 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC4 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC5 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC6 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC7 )
+						{
+						}
+						else if( tbi.code == TTB_FUNC8 )
+						{
+						}
+					}
+
+					btn.x += btn.w;
+				}
+
+				//ラインツールバー処理
+				for (int32 i = 0;i < tr.lineNames.size();i++)
+				{
+					int32 yy = tr.baseY + i * fs * 3 ;
+					if (yy < fs*2 || yy > trackheight) continue;	//トラックラインの表示上限
+
+					int32 bx = tr.captionRect.x + m_paddingL;
+					int32 by = tr.captionRect.y + yy;
+					m_fontM(tr.lineNames[i]).draw(bx, by, tr.lineColors[i]);
+					Rect btn(bx + fs * 6, by, is, is);
+
+					for (int32 ii=0; ii<m_TrackToolbar.size(); ii++)
+					{
+						auto& tbi = m_LineToolbar[ii];
+						if( btn.mouseOver() && btn.leftClicked() )
+						{
+							if( tbi.code == LTB_FUNC1 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC2 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC3 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC4 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC5 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC6 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC7 )
+							{
+							}
+							else if( tbi.code == LTB_FUNC8 )
+							{
+							}
+						}
+						btn.x += btn.w;
+					}
+				}
+
+			}
 		}
 	}
 
